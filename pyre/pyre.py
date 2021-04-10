@@ -5,21 +5,11 @@ This module contains implementation of the EventFileReader class for generating
 tabular data from retrosheet event files.
 """
 
-import re
 import typing
 
-from . import data
+import pandas as pd
 
-_DP = re.compile(r"([\d]+)\(([123B])\)([\d]+)(?:\(([123B])\))?")
-_OUT = re.compile(r"([\d]+)")
-_ERR = re.compile(r"E(\d)")
-_HIT = re.compile(r"([SDTH]|(?:FC)|(?:FLE))([\d]|(?:GR))?")
-_HR = re.compile(r"(HR?)(\d?)$")
-_KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
-_SB = re.compile(r"(SB)([23H])")
-_PO = re.compile(r"PO([123])\(E?[\d]+\)")
-_CS = re.compile(r"(?:PO)?(?:CS)([23H])\((\d+)\)")
-_ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
+from . import data, retrostr
 
 
 class EventFileReader:
@@ -31,12 +21,12 @@ class EventFileReader:
         event_file: Open buffer reading from the event file.
         h_lineup: List containing the home lineup, indexed by position.
         v_lineup: List containing the visiting lineup, indexed by position.
-        h_roster: DataFrame containg home roster.
-        v_roster: DataFrame conatining the visiting roster.
+        h_roster: DataFrame containing home roster.
+        v_roster: DataFrame containing the visiting roster.
         outs_in_current_inning: Number of outs in the inning being processed.
         runners_on_base: List of runners on base.
-        runner_destinations: Destinations of the runners currently on base.
-        current_game: Dictionary of information about the game being processed. 
+        runner_dest: Destinations of the runners currently on base.
+        current_game: Dictionary of information about the game being processed.
         current_event: Dictionary of information about the play being processed.
     """
 
@@ -48,7 +38,7 @@ class EventFileReader:
             year: Year of the event file to be read.
             league: 'A' or 'N', depending on which league the team plays for.
 
-        Returns: 
+        Returns:
             None.
         """
         self.year = year
@@ -56,10 +46,18 @@ class EventFileReader:
         self.event_file = None
         self._reset_state()
 
+    def data_frame(self) -> pd.DataFrame:
+        """Parse the event file and return data frame.
+
+        Returns:
+            Pandas DataFrame of event file data.
+        """
+        return pd.DataFrame(self.parse())
+
     def parse(self):
         """Executes parsing of the event file and generates tabular data.
 
-        Yields: 
+        Yields:
             Tabular data entry for each play that occurs in the event file.
         """
         self._reset_state()
@@ -80,15 +78,15 @@ class EventFileReader:
             None.
         """
         self.info = dict()  # Stores game data, e.g. data, weather
-        self.h_lineup = [None] * 12  # Stores lineup, indexed by position
-        self.v_lineup = [None] * 12
+        self.h_lineup = [""] * 12  # Stores lineup, indexed by position
+        self.v_lineup = [""] * 12
         self.h_roster = None
         self.v_roster = None
         self.home_score = 0
         self.away_score = 0
         self.outs_in_current_inning = 0
-        self.runners_on_base = [None] * 4
-        self.runner_destinations = [None] * 4
+        self.runners_on_base = [""] * 4
+        self.runner_dest = [0] * 4
         self.current_game = None
         self.current_event = None
 
@@ -107,7 +105,7 @@ class EventFileReader:
             prev_loc = infile.tell()
             line = infile.readline()
             if not line:
-                raise("Encountered EOF while parsing new game info")
+                raise Exception("Encountered EOF while parsing new game info")
             fields = line.strip().split(",")
             if fields[0] not in ("version", "info"):
                 infile.seek(prev_loc)
@@ -139,7 +137,8 @@ class EventFileReader:
                 infile.seek(prev_loc)
                 return
             if fields[0] in ["start", "sub"]:
-                pid, pos = fields[1], int(fields[5])
+                pid: str = fields[1]
+                pos: int = int(fields[5])
                 lineup = self.h_lineup if int(fields[3]) else self.v_lineup
                 lineup[pos - 1] = pid
                 continue
@@ -148,7 +147,15 @@ class EventFileReader:
                 yield self.current_event
                 self.current_event = None
 
-    def _process_play(self, inning: str, side: str, batter: str, count: str, pitches: str, description: str):
+    def _process_play(
+        self,
+        inning: str,
+        side: int,
+        batter: str,
+        count: str,
+        pitches: str,
+        description: str,
+    ):
         """Interpret play information to update the next generated entry.
 
         Args:
@@ -156,7 +163,7 @@ class EventFileReader:
             side: 0 if home team batting else 1.
             batter: ID of the current batter.
             count: 2 character string containing number of balls and strikes
-                when the play occurred, e.g., "32" means the play occurred on a 
+                when the play occurred, e.g., "32" means the play occurred on a
                 full count.
             pitches: Sequence of pitches leading to the play.
             description: Retrosheet formatted event description.
@@ -164,17 +171,18 @@ class EventFileReader:
         Returns:
             None.
         """
-        side = int(side)
         self.runners_on_base[0] = batter
         self._generate_event(inning, side, batter, count, pitches)
         self._process_description(description)
         # Set outs to 0 if we have reached 3, a new inning is coming
         if self.outs_in_current_inning > 2:
             self.outs_in_current_inning = 0
-            self.runners_on_base = 4*[None]
-            self.runner_destinations = 4*[None]
+            self.runners_on_base = 4 * [""]
+            self.runner_dest = 4 * [0]
 
-    def _generate_event(self, inning: str, side: str, batter: str, count: str, pitches: str):
+    def _generate_event(
+        self, inning: str, side: int, batter: str, count: str, pitches: str
+    ):
         """Resets the current_event field to partially describe the new play.
 
         Args:
@@ -182,7 +190,7 @@ class EventFileReader:
             side: 0 if home team batting else 1.
             batter: ID of the current batter.
             count: 2 character string containing number of balls and strikes
-                when the play occurred, e.g., "32" means the play occurred on a 
+                when the play occurred, e.g., "32" means the play occurred on a
                 full count.
             pitches: Sequence of pitches leading to the play.
 
@@ -217,11 +225,6 @@ class EventFileReader:
     def _process_description(self, description: str):
         """Update current_event dictionary based on play description.
 
-        The play description is made up of three sections:
-            1) A description of basic play that occurred.
-            2) A series of flags conveying additional information.
-            3) A description of all runner advances in the play.
-
         This method separates the text and makes calls to other methods to
         separately process the 3 sections.
 
@@ -231,179 +234,48 @@ class EventFileReader:
         Returns:
             None.
         """
-        self.current_event["description"] = description
-        start_mod = description.find("/")
-        if start_mod < 0:
-            start_mod = len(description)
-        start_adv = description.rfind(".")
-        if start_adv < 0:
-            start_adv = len(description)
-        event = description[:min(start_mod, start_adv)].rstrip('/.')
-        mod = description[start_mod:start_adv].strip('/.')
-        adv = description[start_adv:].lstrip('.')
-        self.runner_destinations = 4*[None]
-        self._process_event_text(event)
-        self._process_modifier_text(mod)
-        self._process_advance_text(adv)
-        self._update_runners()
+        # self.current_event["description"] = description
+        self.runner_dest = 4 * [0]
+        event, mod, adv = retrostr.split_description(description)
+        info, errors, dest = retrostr.parse_event(event)
+        self._update_destinations(dest)
+        self.current_event.update(info)
+        new_info, new_errors = retrostr.parse_modifiers(mod)
+        errors |= new_errors
+        self.current_event.update(new_info)
+        self._update_destinations(retrostr.parse_advance(adv))
+        for e in errors:
+            self._add_error(e)
+
+    def _update_destinations(self, destinations):
+        """Update the runner_destinations field using the given list."""
+        for i in range(4):
+            self.runner_dest[i] = destinations[i] or self.runner_dest[i]
 
     def _update_runners(self):
         """Update current runner positions given the known runner destinations.
 
-        This method assumes that the runner_destinations field accurately 
-        desribes the runner positions for the following play.
+        This method assumes that the runner_destinations field accurately
+        describes the runner positions for the following play.
 
         Returns:
             None.
         """
         for base in 3, 2, 1, 0:
-            dest = self.runner_destinations[base]
+            dest = self.runner_dest[base]
             if dest is None:
                 continue
             if dest < 0:
                 self.outs_in_current_inning += 1
-                self.runners_on_base[base] = None
+                self.runners_on_base[base] = ""
             if dest < 4:
                 self.runners_on_base[dest] = self.runners_on_base[base]
             else:
-                self.runners_on_base[base] = None
-        self.current_event["BAT_DEST"] = self.runner_destinations[0]
-        self.current_event["ROF_DEST"] = self.runner_destinations[1]
-        self.current_event["ROS_DEST"] = self.runner_destinations[2]
-        self.current_event["ROT_DEST"] = self.runner_destinations[3]
-
-    def _process_event_text(self, event: str):
-        """Process the basic description of a play.
-
-        Args:
-            event: Coded description of the play.
-
-        Returns:
-            None.
-        """
-        if match := _DP.match(event):
-            for runner in match.group(2), match.group(4):
-                if runner == "B" or runner is None:
-                    runner = 0
-                runner = int(runner)
-                self.runner_destinations[runner] = -1
-        elif match := _OUT.match(event):
-            self.runner_destinations[0] = -1
-        elif match := _ERR.match(event):
-            self.runner_destinations[0] = 1
-            self._add_error(match.group(1))
-        elif match := _HIT.match(event):
-            self.current_event["hit_code"] = match.group(1)
-            dest = {"S": 1, "D": 2, "T": 3}.get(match.group(1))
-            self.runner_destinations[0] = dest
-        elif match := _HR.match(event):
-            self.runner_destinations[0] = 4
-        elif event == "C":
-            self.runner_destinations[0] = 1
-        elif event == "HP":
-            self.runner_destinations[0] = 1
-        elif event == "NP":
-            pass
-        elif match := _KW.match(event):
-            self.runner_destinations[0] = -1 if match.group(1) == "K" else 1
-            if match.group(2) is not None:
-                self._process_event_text(str(match.group(2)))
-        elif match := _SB.match(event):
-            base = match.group(1)
-            base = 4 if base == "H" else int(base)
-            self.runner_destinations[base-1] = base
-        elif match := _CS.match(event):
-            base = match.group(1)
-            base = 4 if base == "H" else int(base)
-            self.runner_destinations[base - 1] = -1
-        elif match := _PO.match(event):
-            base = int(match.group(1))
-            self.runner_destinations[base] = -1
-        elif event in ["PB", "BK", "WP", "DI", "OA"]:
-            pass
-        else:
-            print("WARNING: Unrecognized event", event)
-
-    def _process_modifier_text(self, mod: str):
-        """Process all modifiers for the current play.
-
-        Args:
-            mod: A string containing a series of modifiers.
-
-        Returns:
-            None.
-        """
-        if not mod:
-            return
-        mods = mod.split("/")
-        for mod in mods:
-            if mod == "AP":
-                self.current_event["appealed"] = True
-            elif mod == "BP":
-                self.current_event["bunt"] = True
-                self.current_event["fly"] = True
-            elif mod == "GP":
-                self.current_event["bunt"] = True
-            elif mod == "BGDP":
-                self.current_event["bunt"] = True
-                self.current_event["double_play"] = True
-            elif mod == "BINT":
-                self.current_event["batter_interference"] = True
-            elif mod == "BL":
-                self.current_event["bunt"] = True
-            elif mod == "BPDP":
-                self.current_event["bunt"] = True
-                self.current_event["fly"] = True
-                self.current_event["double_play"] = True
-            elif mod == "BR":
-                self.current_event["runner_hit"] = True
-            elif mod == "C":
-                self.current_event["called_third"] = True
-            elif mod == "DP":
-                self.current_event["double_play"] = True
-            elif match := _ERR.match(mod):
-                self._add_error(match.group(1))
-            elif mod == "F":
-                self.current_event["fly"] = True
-            elif mod == "FDP":
-                self.current_event["fly"] = True
-                self.current_event["double_play"] = True
-            elif mod == "FINT":
-                self.current_event["fan_interference"] = True
-            elif mod == "FL":
-                self.current_event["foul"] = True
-            elif mod == "FO":
-                self.current_event["force"] = True
-            elif mod == "G":
-                self.current_event["ground"] = True
-            elif mod == "GDP":
-                self.current_event["ground"] = True
-                self.current_event["double_play"] = True
-            elif mod == "GTP":
-                self.current_event["ground"] = True
-                self.current_event["triple_play"] = True
-            elif mod == "IF":
-                self.current_event["infield_fly"] = True
-            elif mod == "INT":
-                self.current_event["interference"] = True
-            elif mod == "IPHR":
-                self.current_event["in_the_park_hr"] = True
-            elif mod == "L":
-                self.current_event["line_drive"] = True
-            elif mod == "LDP":
-                self.current_event["line_drive"] = True
-                self.current_event["double_play"] = True
-            elif mod == "LTP":
-                self.current_event["line_drive"] = True
-                self.current_event["triple_play"] = True
-            elif mod == "P":
-                self.current_event["pop_fly"] = True
-            elif mod == "SF":
-                self.current_event["sac_fly"] = True
-            elif mod == "SH":
-                self.current_event["sac_bunt"] = True
-            elif mod == "TP":
-                self.current_event["triple_play"] = True
+                self.runners_on_base[base] = ""
+        self.current_event["BAT_DEST"] = self.runner_dest[0]
+        self.current_event["ROF_DEST"] = self.runner_dest[1]
+        self.current_event["ROS_DEST"] = self.runner_dest[2]
+        self.current_event["ROT_DEST"] = self.runner_dest[3]
 
     def _add_error(self, charged: str):
         """Record an error on the play.
@@ -438,25 +310,3 @@ class EventFileReader:
                 continue
             self.current_event[f"putout_{po_cnt}"] = responsible
             break
-
-    def _process_advance_text(self, adv: str):
-        """Process a coded description of runner advancement on the play.
-
-        Args:
-            adv: Coded description of all runner advances.
-
-        Returns:
-            None.
-        """
-        if not adv:
-            return
-        advances = adv.split(";")
-        for advance in advances:
-            if match := _ADV.match(advance):
-                start, success, finish = match.groups()
-                start = 0 if start == "B" else int(start)
-                success = success == "-"
-                finish = 4 if finish == "H" else int(finish)
-                self.runner_destinations[start] = finish if success else -1
-            else:
-                print("WARNING: unable to match advance string:", advance)
