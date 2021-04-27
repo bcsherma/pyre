@@ -7,17 +7,20 @@ import urllib.request
 import pandas as pd
 
 # Base URLs for data sources.
-_EVENT_URL = "https://raw.githubusercontent.com/chadwickbureau/retrosheet/master/event/regular/"
-_ROSTER_URL = "https://raw.githubusercontent.com/chadwickbureau/retrosheet/master/rosters/"
+_EVENT_URL = (
+    "https://raw.githubusercontent.com/chadwickbureau/retrosheet/master/event/regular/"
+)
+_ROSTER_URL = (
+    "https://raw.githubusercontent.com/chadwickbureau/retrosheet/master/rosters/"
+)
 
 # Directory in which to store downloaded data.
-_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".pyre/")
-if not os.path.isdir(_CACHE_DIR):
-    os.mkdir(_CACHE_DIR)
+_DATA_DIR = os.path.join(os.path.expanduser("~"), ".pyre/")
+if not os.path.isdir(_DATA_DIR):
+    os.mkdir(_DATA_DIR)
 
 # Column names for the roster file.
-_ROSTER_COL_NAMES = ["id", "first_name",
-                     "last_name", "bats", "throws", "pos", "team"]
+_ROSTER_COL_NAMES = ["id", "first_name", "last_name", "bats", "throws", "pos", "team"]
 
 
 def get_roster(year: int, team: str) -> pd.DataFrame:
@@ -31,7 +34,7 @@ def get_roster(year: int, team: str) -> pd.DataFrame:
         Roster as a DataFrame.
     """
     roster_file = f"{team}{year}.ROS"
-    full_path = _CACHE_DIR + roster_file
+    full_path = _DATA_DIR + roster_file
     if not os.path.isfile(full_path):
         urllib.request.urlretrieve(_ROSTER_URL + roster_file, full_path)
     return pd.read_csv(full_path, names=_ROSTER_COL_NAMES, index_col="id")
@@ -51,7 +54,7 @@ def get_event_file(year: int, team: str, league: str) -> str:
     if league not in ("A", "N"):
         raise Exception()
     event_file = f"{year}{team}.EV{league}"
-    full_path = _CACHE_DIR + event_file
+    full_path = _DATA_DIR + event_file
     if not os.path.isfile(full_path):
         urllib.request.urlretrieve(_EVENT_URL + event_file, full_path)
     return full_path
