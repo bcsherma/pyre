@@ -18,7 +18,7 @@ class EventFileReader:
     Attributes:
         year: Year of the season for the event file.
         path: Local path to the event file.
-        event_file: Open buffer reading from the event file.
+        event_file: Open buffer for reading from the event file.
         h_lineup: List containing the home lineup, indexed by position.
         v_lineup: List containing the visiting lineup, indexed by position.
         h_roster: DataFrame containing home roster.
@@ -72,7 +72,7 @@ class EventFileReader:
                     yield from self._read_game(infile)
 
     def _reset_state(self):
-        """Reset fields that track the state of the game being parsed.
+        """Reset fields that track the state of the game currently being parsed.
 
         Returns:
             None.
@@ -82,8 +82,8 @@ class EventFileReader:
         self.v_lineup = [""] * 12
         self.h_roster = None
         self.v_roster = None
-        self.home_score = 0
-        self.away_score = 0
+        self.h_score = 0
+        self.v_score = 0
         self.outs_in_current_inning = 0
         self.runners_on_base = [""] * 4
         self.runner_dest = [0] * 4
@@ -197,6 +197,7 @@ class EventFileReader:
         Returns:
             None.
         """
+        def_lineup = self.v_lineup if side else self.h_lineup
         self.current_event = {
             "game_id": self.current_game["id"],
             "visteam": self.current_game["visteam"],
@@ -208,15 +209,15 @@ class EventFileReader:
             "strikes": int(count[1]),
             "pitches": pitches,
             "batter": batter,
-            "P": (self.v_lineup if side else self.h_lineup)[0],
-            "C": (self.v_lineup if side else self.h_lineup)[1],
-            "1B": (self.v_lineup if side else self.h_lineup)[2],
-            "2B": (self.v_lineup if side else self.h_lineup)[3],
-            "3B": (self.v_lineup if side else self.h_lineup)[4],
-            "SS": (self.v_lineup if side else self.h_lineup)[5],
-            "LF": (self.v_lineup if side else self.h_lineup)[6],
-            "CF": (self.v_lineup if side else self.h_lineup)[7],
-            "RF": (self.v_lineup if side else self.h_lineup)[8],
+            "P": def_lineup[0],
+            "C": def_lineup[1],
+            "1B": def_lineup[2],
+            "2B": def_lineup[3],
+            "3B": def_lineup[4],
+            "SS": def_lineup[5],
+            "LF": def_lineup[6],
+            "CF": def_lineup[7],
+            "RF": def_lineup[8],
             "ROF": self.runners_on_base[1],
             "ROS": self.runners_on_base[2],
             "ROT": self.runners_on_base[3],
@@ -234,7 +235,6 @@ class EventFileReader:
         Returns:
             None.
         """
-        # self.current_event["description"] = description
         self.runner_dest = 4 * [0]
         event, mod, adv = retrostr.split_description(description)
         info, errors, dest = retrostr.parse_event(event)
