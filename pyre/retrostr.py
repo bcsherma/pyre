@@ -126,7 +126,7 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
             runner_destinations = [
                 r2 if r2 else r1 for r1, r2 in zip(runner_destinations, rd_2)
             ]
-            return info, errors, runner_destinations
+        return info, errors, runner_destinations
 
     # This block processes stolen bases.
     if match := _SB.match(event_text):
@@ -262,6 +262,8 @@ def parse_advance(advance: str):
             runner.
     """
     destinations = [0] * 4
+    if not advance:
+        return destinations
     advances = advance.split(";")
     for advance in advances:
         if match := _ADV.match(advance):

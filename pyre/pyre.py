@@ -266,9 +266,10 @@ class EventFileReader:
             if dest is None:
                 continue
             if dest < 0:
+                self.print("HEllo!")
                 self.outs_in_current_inning += 1
                 self.runners_on_base[base] = ""
-            if dest < 4:
+            elif dest < 4:
                 self.runners_on_base[dest] = self.runners_on_base[base]
             else:
                 self.runners_on_base[base] = ""
