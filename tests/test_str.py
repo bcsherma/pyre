@@ -12,6 +12,7 @@ from pyre import retrostr
         ("D8/E2/G.1-3;2-H", ("D8", "E2/G", "1-3;2-H")),
         ("48.1-3", ("48", "", "1-3")),
         ("HR/F", ("HR", "F", "")),
+        ("PO2(E2/TH).2-3", ("PO2(E2/TH)", "", "2-3")),
     ],
 )
 def test_split_desc(test_input, expected):

@@ -3,13 +3,14 @@
 
 import re
 import typing
+import sys
 
 _DP = re.compile(r"([\d]+)\(([123B])\)([\d]+)(?:\(([123B])\))?")
 _OUT = re.compile(r"([\d]+)")
 _ERR = re.compile(r"E(\d)")
-# TODO: Add fielder's choice
+_FC = re.compile(r"FC[\d]")
 # TODO: Add error on fly ball
-_HIT = re.compile(r"([SDT])([\d]|(?:GR))?$")
+_HIT = re.compile(r"([SDT])([\d]+|(?:GR))?$")
 _HR = re.compile(r"(HR?)(\d?)$")
 _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
@@ -34,6 +35,7 @@ def split_description(description: str) -> typing.Tuple[str, str, str]:
         mod: Auxiliary information about the play.
         adv: Description of runner advances on the play.
     """
+    # TODO: Current method fails on PO2(E2/TH) because of splitting on /
     start_mod = description.find("/")
     if start_mod < 0:
         start_mod = len(description)
@@ -96,6 +98,11 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         info["hit_code"] = hit_code
         dest = {"S": 1, "D": 2, "T": 3}[hit_code]
         runner_destinations[0] = dest
+        return info, errors, runner_destinations
+
+    # This block processes fielder's choice events
+    if _FC.match(event_text):
+        runner_destinations[0] = 1
         return info, errors, runner_destinations
 
     # This block processes home run events.
@@ -161,7 +168,7 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         info[code] = True
         return info, errors, runner_destinations
 
-    print("WARNING: Unrecognized event", event_text)
+    print("WARNING: Unrecognized event", event_text, file=sys.stderr)
     return info, errors, runner_destinations
 
 
@@ -273,5 +280,5 @@ def parse_advance(advance: str):
             finish = 4 if finish == "H" else int(finish)
             destinations[start_base] = finish if success else -1
         else:
-            print("WARNING: unable to match advance string:", advance)
+            print("WARNING: unable to match advance string:", advance, file=sys.stderr)
     return destinations
