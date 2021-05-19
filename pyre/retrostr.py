@@ -35,8 +35,13 @@ def split_description(description: str) -> typing.Tuple[str, str, str]:
         mod: Auxiliary information about the play.
         adv: Description of runner advances on the play.
     """
-    # TODO: Current method fails on PO2(E2/TH) because of splitting on /
     start_mod = description.find("/")
+    if 0 < description.find("(") < start_mod < description.find(")"):
+        next_slash = description[start_mod + 1 :].find("/")
+        if next_slash < 0:
+            start_mod = -1
+        else:
+            start_mod += next_slash + 1
     if start_mod < 0:
         start_mod = len(description)
     start_adv = description.rfind(".")
