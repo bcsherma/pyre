@@ -38,6 +38,7 @@ def test_split_desc(test_input, expected):
         ("SB3", ({}, set(), [0, 0, 3, 0])),
         ("CS2(1)", ({}, set(), [0, -1, 0, 0])),
         ("PO3(2)", ({}, set(), [0, 0, 0, -1])),
+        ("PO2(E2/TH)", ({}, set(), [0, 0, 0, 0])),
     ],
 )
 def test_parse_event(test_input, expected):

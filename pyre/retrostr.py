@@ -7,15 +7,15 @@ import sys
 
 _DP = re.compile(r"([\d]+)\(([123B])\)([\d]+)(?:\(([123B])\))?")
 _OUT = re.compile(r"([\d]+)")
-_ERR = re.compile(r"E(\d)")
+_ERR = re.compile(r"(FL)?E(\d)")
 _FC = re.compile(r"FC[\d]")
 # TODO: Add error on fly ball
 _HIT = re.compile(r"([SDT])([\d]+|(?:GR))?$")
 _HR = re.compile(r"(HR?)(\d?)$")
 _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
-_PO = re.compile(r"PO([123])\(E?[\d]+\)")
-_CS = re.compile(r"(?:PO)?CS([23H])\((\d+)\)")
+_PO = re.compile(r"PO([123])\(E?[\d]+(?:/TH)?\)")
+_CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(E\d)?\)")
 _ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
 
 
@@ -94,7 +94,10 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
     # This block processes events where an error occurred.
     if match := _ERR.match(event_text):
         runner_destinations[0] = 1
-        errors.add(match.group(1))
+        if match.group(1) is not None:
+            info["fly"] = True
+            info["foul"] = True
+        errors.add(match.group(2))
         return info, errors, runner_destinations
 
     # This block processes hits.
@@ -152,6 +155,7 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         base = match.group(1)
         base = 4 if base == "H" else int(base)
         runner_destinations[base - 1] = -1
+        # TODO: read error from third group of this regex
         return info, errors, runner_destinations
 
     # This block processes pitch out events.
@@ -218,7 +222,7 @@ def parse_modifiers(modifiers: str) -> typing.Tuple[dict, set]:
         elif mod == "DP":
             modifier_dict["double_play"] = True
         elif match := _ERR.match(mod):
-            errors.add(match.group(1))
+            errors.add(match.group(2))
         elif mod == "F":
             modifier_dict["fly"] = True
         elif mod == "FDP":
