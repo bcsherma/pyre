@@ -13,8 +13,10 @@ _HIT = re.compile(r"([SDT])([\d]+|(?:GR))?$")
 _HR = re.compile(r"(HR?)(\d?)$")
 _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
+# TODO: Allow for errors in putouts that negate the out and charge and error
 _PO = re.compile(r"PO([123])\(E?[\d]+(?:/TH)?\)")
 _CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(?:E(\d))?\)")
+# TODO: Parse errors specified in the advance parameters
 _ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
 
 

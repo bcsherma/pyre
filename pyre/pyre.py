@@ -88,7 +88,7 @@ class EventFileReader:
         self.runners_on_base = [""] * 4
         self.runner_dest = [0] * 4
         self.current_game = None
-        self.current_event = None
+        self._current_event = None
 
     def _new_game(self, game_id: str, infile: typing.TextIO):
         """Consumes lines describing game metadata from the event file.
@@ -144,8 +144,8 @@ class EventFileReader:
                 continue
             if fields[0] == "play":
                 self._process_play(*fields[1:])
-                yield self.current_event
-                self.current_event = None
+                yield self._current_event
+                self._current_event = None
 
     def _process_play(
         self,
@@ -198,10 +198,12 @@ class EventFileReader:
             None.
         """
         def_lineup = self.v_lineup if side else self.h_lineup
-        self.current_event = {
+        self._current_event = {
             "game_id": self.current_game["id"],
-            "visteam": self.current_game["visteam"],
-            "hometeam": self.current_game["hometeam"],
+            "vis_team": self.current_game["visteam"],
+            "home_team": self.current_game["hometeam"],
+            "home_score": self.h_score,
+            "vis_score": self.v_score,
             "inning": inning,
             "batting_team": self.current_game["hometeam" if int(side) else "visteam"],
             "outs": self.outs_in_current_inning,
@@ -235,14 +237,15 @@ class EventFileReader:
         Returns:
             None.
         """
+        self._current_event["description"] = description
         self.runner_dest = 4 * [0]
         event, mod, adv = retrostr.split_description(description)
         info, errors, dest = retrostr.parse_event(event)
         self._update_destinations(dest)
-        self.current_event.update(info)
+        self._current_event.update(info)
         new_info, new_errors = retrostr.parse_modifiers(mod)
         errors |= new_errors
-        self.current_event.update(new_info)
+        self._current_event.update(new_info)
         self._update_destinations(retrostr.parse_advance(adv))
         self._update_runners()
         for e in errors:
@@ -272,11 +275,15 @@ class EventFileReader:
             elif dest < 4:
                 self.runners_on_base[dest] = self.runners_on_base[base]
             else:
+                if self._current_event["batting_team"] == "hometeam":
+                    self.h_score += 1
+                else:
+                    self.v_score += 1
                 self.runners_on_base[base] = ""
-        self.current_event["BAT_DEST"] = self.runner_dest[0]
-        self.current_event["ROF_DEST"] = self.runner_dest[1]
-        self.current_event["ROS_DEST"] = self.runner_dest[2]
-        self.current_event["ROT_DEST"] = self.runner_dest[3]
+        self._current_event["BAT_DEST"] = self.runner_dest[0]
+        self._current_event["ROF_DEST"] = self.runner_dest[1]
+        self._current_event["ROS_DEST"] = self.runner_dest[2]
+        self._current_event["ROT_DEST"] = self.runner_dest[3]
 
     def _add_error(self, charged: str):
         """Record an error on the play.
@@ -289,10 +296,10 @@ class EventFileReader:
         """
         error_cnt = 1
         while True:
-            if self.current_event.get(f"error_{error_cnt}"):
+            if self._current_event.get(f"error_{error_cnt}"):
                 error_cnt += 1
                 continue
-            self.current_event[f"error_{error_cnt}"] = charged
+            self._current_event[f"error_{error_cnt}"] = charged
             break
 
     def _add_putout(self, responsible: str):
@@ -306,8 +313,8 @@ class EventFileReader:
         """
         po_cnt = 1
         while True:
-            if self.current_event.get(f"putout_{po_cnt}"):
+            if self._current_event.get(f"putout_{po_cnt}"):
                 po_cnt += 1
                 continue
-            self.current_event[f"putout_{po_cnt}"] = responsible
+            self._current_event[f"putout_{po_cnt}"] = responsible
             break
