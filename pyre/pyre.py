@@ -203,7 +203,7 @@ class EventFileReader:
             "visteam": self.current_game["visteam"],
             "hometeam": self.current_game["hometeam"],
             "inning": inning,
-            "batting_team": self.current_game["hometeam" if side else "visteam"],
+            "batting_team": self.current_game["hometeam" if int(side) else "visteam"],
             "outs": self.outs_in_current_inning,
             "balls": int(count[0]),
             "strikes": int(count[1]),
@@ -244,6 +244,7 @@ class EventFileReader:
         errors |= new_errors
         self.current_event.update(new_info)
         self._update_destinations(retrostr.parse_advance(adv))
+        self._update_runners()
         for e in errors:
             self._add_error(e)
 

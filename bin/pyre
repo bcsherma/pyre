@@ -9,10 +9,11 @@ import pyre
 @click.argument("team")
 @click.argument("league")
 @click.argument("year")
-def main(team, league, year):
+@click.argument("output")
+def main(team, league, year, output):
     """ """
     reader = pyre.EventFileReader(team, year, league)
-    reader.data_frame()  # Currently parses and does nothing with result
+    reader.data_frame().to_csv(output)
 
 
 if __name__ == "__main__":

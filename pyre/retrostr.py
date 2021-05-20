@@ -9,13 +9,12 @@ _DP = re.compile(r"([\d]+)\(([123B])\)([\d]+)(?:\(([123B])\))?")
 _OUT = re.compile(r"([\d]+)")
 _ERR = re.compile(r"(FL)?E(\d)")
 _FC = re.compile(r"FC[\d]")
-# TODO: Add error on fly ball
 _HIT = re.compile(r"([SDT])([\d]+|(?:GR))?$")
 _HR = re.compile(r"(HR?)(\d?)$")
 _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
 _PO = re.compile(r"PO([123])\(E?[\d]+(?:/TH)?\)")
-_CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(E\d)?\)")
+_CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(?:E(\d))?\)")
 _ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
 
 
@@ -155,7 +154,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         base = match.group(1)
         base = 4 if base == "H" else int(base)
         runner_destinations[base - 1] = -1
-        # TODO: read error from third group of this regex
+        if match.group(3) is not None:
+            errors.add(match.group(3))
         return info, errors, runner_destinations
 
     # This block processes pitch out events.
