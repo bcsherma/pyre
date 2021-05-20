@@ -13,8 +13,7 @@ _HIT = re.compile(r"([SDT])([\d]+|(?:GR))?$")
 _HR = re.compile(r"(HR?)(\d?)$")
 _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
-# TODO: Allow for errors in putouts that negate the out and charge and error
-_PO = re.compile(r"PO([123])\(E?[\d]+(?:/TH)?\)")
+_PO = re.compile(r"PO([123])\((?:(\d+)|E(\d))(?:/TH)?\)")
 _CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(?:E(\d))?\)")
 # TODO: Parse errors specified in the advance parameters
 _ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
@@ -163,7 +162,10 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
     # This block processes pitch out events.
     if match := _PO.match(event_text):
         base = int(match.group(1))
-        runner_destinations[base] = -1
+        if match.group(3) is None:
+            runner_destinations[base] = -1
+        else:
+            errors.add(match.group(3))
         return info, errors, runner_destinations
 
     # This block processes runner events where the result is given in the
