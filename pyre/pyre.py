@@ -224,6 +224,7 @@ class EventFileReader:
             "ROS": self.runners_on_base[2],
             "ROT": self.runners_on_base[3],
         }
+        self._current_event.update(default_modifier_values())
 
     def _process_description(self, description: str):
         """Update current_event dictionary based on play description.
@@ -318,3 +319,35 @@ class EventFileReader:
                 continue
             self._current_event[f"putout_{po_cnt}"] = responsible
             break
+
+
+def default_modifier_values():
+    return {
+        "strikeout": 0,
+        "walk": 0,
+        "appealed": 0,
+        "bunt": 0,
+        "fly": 0,
+        "foul": 0,
+        "balk": 0,
+        "ground": 0,
+        "passed_ball": 0,
+        "double_play": 0,
+        "triple_play": 0,
+        "batter_interference": 0,
+        "catcher_interference": 0,
+        "runner_hit": 0,
+        "called_third": 0,
+        "fan_interference": 0,
+        "force": 0,
+        "infield_fly": 0,
+        "interference": 0,
+        "in_the_park_hr": 0,
+        "line_drive": 0,
+        "pop_fly": 0,
+        "sac_bunt": 0,
+        "sac_fly": 0,
+        "hit_by_pitch": 0,
+        "unknown": 0,
+        "defensive_indifference": 0,
+    }
