@@ -8,7 +8,7 @@ if __name__ == "__main__":
         author_email="bcanfieldsherman@gmail.com",
         description="Pyre: The Python RetroSheet Event File Parser",
         packages=setuptools.find_packages(),
-        python_requires=">=3.8",
+        python_requires=">=3",
         install_requires=["pandas", "click"],
         extras_require={"dev": ["pytest", "black"]},
         scripts=["bin/pyre"],

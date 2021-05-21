@@ -77,7 +77,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes double play events.
-    if match := _DP.match(event_text):
+    match = _DP.match(event_text)
+    if match:
         for runner in match.group(2), match.group(4):
             if runner == "B" or runner is None:
                 runner = 0
@@ -91,7 +92,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes events where an error occurred.
-    if match := _ERR.match(event_text):
+    match = _ERR.match(event_text)
+    if match:
         runner_destinations[0] = 1
         if match.group(1) is not None:
             info["fly"] = 1
@@ -100,7 +102,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes hits.
-    if match := _HIT.match(event_text):
+    match = _HIT.match(event_text)
+    if match:
         hit_code = match.group(1)
         info["hit_code"] = hit_code
         dest = {"S": 1, "D": 2, "T": 3}[hit_code]
@@ -131,7 +134,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes strikeout and walk events.
-    if match := _KW.match(event_text):
+    match = _KW.match(event_text)
+    if match:
         if match.group(1) == "K":
             runner_destinations[0] = -1
             info["strikeout"] = 1
@@ -148,14 +152,16 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes stolen bases.
-    if match := _SB.match(event_text):
+    match = _SB.match(event_text)
+    if match:
         base = match.group(1)
         base = 4 if base == "H" else int(base)
         runner_destinations[base - 1] = base
         return info, errors, runner_destinations
 
     # This block processes caught stealing events.
-    if match := _CS.match(event_text):
+    match = _CS.match(event_text)
+    if match:
         base = match.group(1)
         base = 4 if base == "H" else int(base)
         runner_destinations[base - 1] = -1
@@ -164,7 +170,8 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
         return info, errors, runner_destinations
 
     # This block processes pitch out events.
-    if match := _PO.match(event_text):
+    match = _PO.match(event_text)
+    if match:
         base = int(match.group(1))
         if match.group(3) is None:
             runner_destinations[base] = -1
@@ -229,7 +236,8 @@ def parse_modifiers(modifiers: str) -> typing.Tuple[dict, set]:
             modifier_dict["called_third"] = 1
         elif mod == "DP":
             modifier_dict["double_play"] = 1
-        elif match := _ERR.match(mod):
+        elif _ERR.match(mod):
+            match = _ERR.match(mod)
             errors.add(match.group(2))
         elif mod == "F":
             modifier_dict["fly"] = 1
@@ -290,7 +298,8 @@ def parse_advance(advance: str):
         return destinations
     advances = advance.split(";")
     for advance in advances:
-        if match := _ADV.match(advance):
+        match = _ADV.match(advance)
+        if match:
             start, success, finish, aux = match.groups()
             if aux is not None:
                 for match in re.findall(
