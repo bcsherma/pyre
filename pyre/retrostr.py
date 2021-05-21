@@ -15,8 +15,7 @@ _KW = re.compile(r"(K|W|(?:IW?))(?:\+(.*))?")
 _SB = re.compile(r"SB([23H])")
 _PO = re.compile(r"PO([123])\((?:(\d+)|E(\d))(?:/TH)?\)")
 _CS = re.compile(r"(?:PO)?CS([23H])\((\d+)(?:E(\d))?\)")
-# TODO: Parse errors specified in the advance parameters
-_ADV = re.compile(r"([123B])([-X])([123H])(?:\(.*\))*")
+_ADV = re.compile(r"([123B])([-X])([123H])(\(.*\))*")
 
 
 def split_description(description: str) -> typing.Tuple[str, str, str]:
@@ -287,7 +286,14 @@ def parse_advance(advance: str):
     advances = advance.split(";")
     for advance in advances:
         if match := _ADV.match(advance):
-            start, success, finish = match.groups()
+            start, success, finish, aux = match.groups()
+            if aux is not None:
+                for match in re.findall(
+                    r"\((?:(\d+)|(UR|NR|/TH)|(\d*E\d+))(/TH)?\)", aux
+                ):
+                    # play, mod, err, th_mod = match
+                    # TODO: Record info from the above variables
+                    pass
             start_base = 0 if start == "B" else int(start)
             success = success == "-"
             finish = 4 if finish == "H" else int(finish)
