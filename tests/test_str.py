@@ -61,9 +61,10 @@ def test_parser_modifiers(test_input, expected):
 @pytest.mark.parametrize(
     "test_input,expected",
     [
-        ("", [0, 0, 0, 0]),
-        ("1-2", [0, 2, 0, 0]),
-        ("2-3;3XH", [0, 0, 3, -1]),
+        ("", (dict(), set(), [0, 0, 0, 0])),
+        ("1-2", (dict(), set(), [0, 2, 0, 0])),
+        ("2-3;3XH", (dict(), set(), [0, 0, 3, -1])),
+        ("BX2(7E4)", (dict(), set("4"), [2, 0, 0, 0])),
     ],
 )
 def test_parse_advance(test_input, expected):

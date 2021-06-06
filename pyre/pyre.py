@@ -247,7 +247,10 @@ class EventFileReader:
         new_info, new_errors = retrostr.parse_modifiers(mod)
         errors |= new_errors
         self._current_event.update(new_info)
-        self._update_destinations(retrostr.parse_advance(adv))
+        new_info, new_errors, new_dest = retrostr.parse_advance(adv)
+        self._current_event.update(new_info)
+        errors |= new_errors
+        self._update_destinations(new_dest)
         self._update_runners()
         for e in errors:
             self._add_error(e)
@@ -301,6 +304,7 @@ class EventFileReader:
                 error_cnt += 1
                 continue
             self._current_event[f"error_{error_cnt}"] = charged
+            self._current_event["error_cnt"] = error_cnt
             break
 
     def _add_putout(self, responsible: str):
@@ -350,4 +354,8 @@ def default_modifier_values():
         "triple_play": 0,
         "unknown": 0,
         "walk": 0,
+        "error_cnt": 0,
+        "error_1": 0,
+        "error_2": 0,
+        "error_3": 0,
     }

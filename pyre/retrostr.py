@@ -283,35 +283,46 @@ def parse_modifiers(modifiers: str) -> typing.Tuple[dict, set]:
     return modifier_dict, errors
 
 
-def parse_advance(advance: str):
+def parse_advance(advance: str) -> typing.Tuple[dict, set, list]:
     """Process a coded description of runner advancement on the play.
 
     Args:
         advance: Coded description of all runner advances.
 
     Returns:
-        destinations: A list of 4 numbers describing the destination of each
-            runner.
+        info: Output fields derived from the description.
+        errors: A list of fielder positions with errors charged on the play.
+        destinations: Destination base of each runner on the play.
     """
-    destinations = [0] * 4
+    # These are, in order, the return values of this function.
+    info = dict()
+    errors = set()
+    destinations: typing.List[int] = [0] * 4
     if not advance:
-        return destinations
+        return info, errors, destinations
     advances = advance.split(";")
     for advance in advances:
         match = _ADV.match(advance)
         if match:
             start, success, finish, aux = match.groups()
-            if aux is not None:
-                for match in re.findall(
-                    r"\((?:(\d+)|(UR|NR|/TH)|(\d*E\d+))(/TH)?\)", aux
-                ):
-                    # play, mod, err, th_mod = match
-                    # TODO: Record info from the above variables
-                    pass
             start_base = 0 if start == "B" else int(start)
             success = success == "-"
             finish = 4 if finish == "H" else int(finish)
             destinations[start_base] = finish if success else -1
+            if aux is not None:
+                for match in re.findall(
+                    r"\((?:(\d+)|(UR|NR|/TH)|(?:\d*E(\d+)))(/TH)?\)", aux
+                ):
+                    play, mod, err, th_mod = match
+                    if err:
+                        errors.add(err)
+                        destinations[start_base] = finish  # Error negates out
+                    if th_mod:
+                        pass  # TODO: diff. between fielding/throwing err
+                    if play:
+                        pass  # TODO: record putout
+                    if mod:
+                        pass  # TODO: recognize unearned and no-rbi runs
         else:
             print("WARNING: unable to match advance string:", advance, file=sys.stderr)
-    return destinations
+    return info, errors, destinations
