@@ -199,32 +199,31 @@ class EventFileReader:
         """
         def_lineup = self.v_lineup if side else self.h_lineup
         self._current_event = {
-            "game_id": self.current_game["id"],
-            "vis_team": self.current_game["visteam"],
-            "home_team": self.current_game["hometeam"],
-            "home_score": self.h_score,
-            "vis_score": self.v_score,
-            "inning": inning,
-            "batting_team": self.current_game["hometeam" if int(side) else "visteam"],
-            "outs": self.outs_in_current_inning,
-            "balls": int(count[0]),
-            "strikes": int(count[1]),
-            "pitches": pitches,
-            "batter": batter,
-            "P": def_lineup[0],
-            "C": def_lineup[1],
-            "1B": def_lineup[2],
-            "2B": def_lineup[3],
-            "3B": def_lineup[4],
-            "SS": def_lineup[5],
-            "LF": def_lineup[6],
-            "CF": def_lineup[7],
-            "RF": def_lineup[8],
-            "ROF": self.runners_on_base[1],
-            "ROS": self.runners_on_base[2],
-            "ROT": self.runners_on_base[3],
+            "GAME_ID": self.current_game["id"],
+            "AWAY_TEAM_ID": self.current_game["visteam"],
+            "HOME_TEAM_ID": self.current_game["hometeam"],
+            "HOME_SCORE_CT": self.h_score,
+            "AWAY_SCORE_CT": self.v_score,
+            "INN_CT": inning,
+            "BAT_HOME_ID": self.current_game["hometeam" if int(side) else "visteam"],
+            "OUTS_CT": self.outs_in_current_inning,
+            "BALLS_CT": int(count[0]),
+            "STRIKES_CT": int(count[1]),
+            "PITCH_SEQ_TX": pitches,
+            "BAT_ID": batter,
+            "PIT_ID": def_lineup[0],
+            "POS2_FLD_ID": def_lineup[1],
+            "POS3_FLD_ID": def_lineup[2],
+            "POS4_FLD_ID": def_lineup[3],
+            "POS5_FLD_ID": def_lineup[4],
+            "POS6_FLD_ID": def_lineup[5],
+            "POS7_FLD_ID": def_lineup[6],
+            "POS8_FLD_ID": def_lineup[7],
+            "POS9_FLD_ID": def_lineup[8],
+            "BASE1_RUN_ID": self.runners_on_base[1],
+            "BASE2_RUN_ID": self.runners_on_base[2],
+            "BASE3_RUN_ID": self.runners_on_base[3],
         }
-        self._current_event.update(default_modifier_values())
 
     def _process_description(self, description: str):
         """Update current_event dictionary based on play description.
@@ -238,7 +237,7 @@ class EventFileReader:
         Returns:
             None.
         """
-        self._current_event["description"] = description
+        self._current_event["EVENT_TX"] = description
         self.runner_dest = 4 * [0]
         event, mod, adv = retrostr.split_description(description)
         info, errors, dest = retrostr.parse_event(event)
@@ -279,15 +278,18 @@ class EventFileReader:
             elif dest < 4:
                 self.runners_on_base[dest] = self.runners_on_base[base]
             else:
-                if self._current_event["batting_team"] == "hometeam":
+                if (
+                    self._current_event["BAT_HOME_ID"]
+                    == self._current_event["HOME_TEAM_ID"]
+                ):
                     self.h_score += 1
                 else:
                     self.v_score += 1
                 self.runners_on_base[base] = ""
-        self._current_event["BAT_DEST"] = self.runner_dest[0]
-        self._current_event["ROF_DEST"] = self.runner_dest[1]
-        self._current_event["ROS_DEST"] = self.runner_dest[2]
-        self._current_event["ROT_DEST"] = self.runner_dest[3]
+        self._current_event["BAT_DEST_ID"] = self.runner_dest[0]
+        self._current_event["RUN1_DEST_ID"] = self.runner_dest[1]
+        self._current_event["RUN2_DEST_ID"] = self.runner_dest[2]
+        self._current_event["RUN3_DEST_ID"] = self.runner_dest[3]
 
     def _add_error(self, charged: str):
         """Record an error on the play.
@@ -298,64 +300,7 @@ class EventFileReader:
         Returns:
             None.
         """
-        error_cnt = 1
-        while True:
-            if self._current_event.get(f"error_{error_cnt}"):
-                error_cnt += 1
-                continue
-            self._current_event[f"error_{error_cnt}"] = charged
-            self._current_event["error_cnt"] = error_cnt
-            break
+        error_cnt = self._current_event.get("ERR_CT", 0)
+        self._current_event[f"ERR{error_cnt + 1}_FLD_CD"] = charged
+        self._current_event["ERR_CT"] = error_cnt + 1
 
-    def _add_putout(self, responsible: str):
-        """Record a putout in the current_event dictionary.
-
-        Args:
-            responsible: Position # of player responsible for putout.
-
-        Returns:
-            None.
-        """
-        po_cnt = 1
-        while True:
-            if self._current_event.get(f"putout_{po_cnt}"):
-                po_cnt += 1
-                continue
-            self._current_event[f"putout_{po_cnt}"] = responsible
-            break
-
-
-def default_modifier_values():
-    return {
-        "appealed": 0,
-        "balk": 0,
-        "batter_interference": 0,
-        "bunt": 0,
-        "called_third": 0,
-        "catcher_interference": 0,
-        "defensive_indifference": 0,
-        "double_play": 0,
-        "fan_interference": 0,
-        "fly": 0,
-        "force": 0,
-        "foul": 0,
-        "ground": 0,
-        "hit_by_pitch": 0,
-        "in_the_park_hr": 0,
-        "infield_fly": 0,
-        "interference": 0,
-        "line_drive": 0,
-        "passed_ball": 0,
-        "pop_fly": 0,
-        "runner_hit": 0,
-        "sac_bunt": 0,
-        "sac_fly": 0,
-        "strikeout": 0,
-        "triple_play": 0,
-        "unknown": 0,
-        "walk": 0,
-        "error_cnt": 0,
-        "error_1": 0,
-        "error_2": 0,
-        "error_3": 0,
-    }

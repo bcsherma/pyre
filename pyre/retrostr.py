@@ -96,18 +96,17 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
     if match:
         runner_destinations[0] = 1
         if match.group(1) is not None:
-            info["fly"] = 1
-            info["foul"] = 1
+            info["FOUL_FL"] = 1
         errors.add(match.group(2))
         return info, errors, runner_destinations
 
     # This block processes hits.
     match = _HIT.match(event_text)
     if match:
-        hit_code = match.group(1)
-        info["hit_code"] = hit_code
-        dest = {"S": 1, "D": 2, "T": 3}[hit_code]
-        runner_destinations[0] = dest
+        hit = match.group(1)
+        code = {"S": 1, "D": 2, "T": 3}[hit]
+        info["HIT_FL"] = code
+        runner_destinations[0] = code
         return info, errors, runner_destinations
 
     # This block processes fielder's choice events
@@ -117,19 +116,19 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
 
     # This block processes home run events.
     if _HR.match(event_text):
-        info["hit_code"] = "H"
+        info["HIT_FL"] = 4
         runner_destinations[0] = 4
         return info, errors, runner_destinations
 
     # This block processes catcher interference events.
     if event_text == "C":
-        info["catcher_interference"] = 1
+        # TODO: Record interference in event type
         runner_destinations[0] = 1
         return info, errors, runner_destinations
 
     # This block processes hit by pitch events
     if event_text == "HP":
-        info["hit_by_pitch"] = 1
+        # TODO: Record hit by pitch in event type
         runner_destinations[0] = 1
         return info, errors, runner_destinations
 
@@ -138,10 +137,10 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
     if match:
         if match.group(1) == "K":
             runner_destinations[0] = -1
-            info["strikeout"] = 1
+            # TODO: Record strikeout in event type
         else:
             runner_destinations[0] = 1
-            info["walk"] = 1
+            # TODO: Record walk in event type
         if match.group(2) is not None:
             info_2, err_2, rd_2 = parse_event(match.group(2))
             info.update(info_2)
@@ -179,19 +178,16 @@ def parse_event(event_text: str) -> typing.Tuple[dict, set, list]:
             errors.add(match.group(3))
         return info, errors, runner_destinations
 
-    # This block processes runner events where the result is given in the
-    # advancement string.
-    if event_text in ["PB", "BK", "WP", "DI", "OA"]:
-        code = {
-            "PB": "passed_ball",
-            "BK": "balk",
-            "WP": "wild_pitch",
-            "DI": "defensive_indifference",
-            "OA": "unknown",
-        }.get(event_text)
-        info[code] = 1
+    if event_text == "WP":  # Wild pitch
+        info["WP_FL"] = 1
         return info, errors, runner_destinations
 
+    if event_text == "PB":  # Passed ball
+        info["PB_FL"] = 1
+        return info, errors, runner_destinations
+
+    # TODO: Process balk, unknown, and defensive indifference in event code
+    # Codes are BK, DI, OA
     print("WARNING: Unrecognized event", event_text, file=sys.stderr)
     return info, errors, runner_destinations
 
@@ -212,74 +208,66 @@ def parse_modifiers(modifiers: str) -> typing.Tuple[dict, set]:
     modifier_dict = {}
     errors = set()
     for mod in mod_list:
-        if mod == "AP":
-            modifier_dict["appealed"] = 1
-        elif mod == "BP":
-            modifier_dict["bunt"] = 0
-            modifier_dict["fly"] = 0
+        if mod == "BP":
+            modifier_dict["BUNT_FL"] = 0
+            modifier_dict["BATTEDBALL_CD"] = "F"
         elif mod == "GP":
-            modifier_dict["bunt"] = 1
+            modifier_dict["BUNT_FL"] = 1
         elif mod == "BGDP":
-            modifier_dict["bunt"] = 1
-            modifier_dict["double_play"] = 1
-        elif mod == "BINT":
-            modifier_dict["batter_interference"] = 1
+            modifier_dict["BUNT_FL"] = 1
+            modifier_dict["DP_FL"] = 1
         elif mod == "BL":
-            modifier_dict["bunt"] = 1
+            modifier_dict["BUNT_FL"] = 1
         elif mod == "BPDP":
-            modifier_dict["bunt"] = 1
-            modifier_dict["fly"] = 1
-            modifier_dict["double_play"] = 1
-        elif mod == "BR":
-            modifier_dict["runner_hit"] = 1
-        elif mod == "C":
-            modifier_dict["called_third"] = 1
+            modifier_dict["BUNT_FL"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "F"
+            modifier_dict["BATTEDBALL_CD"] = "F"
+            modifier_dict["DP_FL"] = 1
         elif mod == "DP":
-            modifier_dict["double_play"] = 1
+            modifier_dict["DP_FL"] = 1
         elif _ERR.match(mod):
             match = _ERR.match(mod)
             errors.add(match.group(2))
         elif mod == "F":
-            modifier_dict["fly"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "F"
         elif mod == "FDP":
-            modifier_dict["fly"] = 1
-            modifier_dict["double_play"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "F"
+            modifier_dict["DP_FL"] = 1
         elif mod == "FINT":
-            modifier_dict["fan_interference"] = 1
+            # This is code for fan interference, which is not expressed in
+            # the output of BEVENT or cwevent
+            pass
         elif mod == "FL":
-            modifier_dict["foul"] = 1
-        elif mod == "FO":
-            modifier_dict["force"] = 1
+            modifier_dict["FOUL_FL"] = 1
         elif mod == "G":
-            modifier_dict["ground"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "G"
         elif mod == "GDP":
-            modifier_dict["ground"] = 1
-            modifier_dict["double_play"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "G"
+            modifier_dict["DP_FL"] = 1
         elif mod == "GTP":
-            modifier_dict["ground"] = 1
-            modifier_dict["triple_play"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "G"
+            modifier_dict["TP_FL"] = 1
         elif mod == "IF":
-            modifier_dict["infield_fly"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "F"
         elif mod == "INT":
-            modifier_dict["interference"] = 1
-        elif mod == "IPHR":
-            modifier_dict["in_the_park_hr"] = 1
+            # TODO: This should be reflected in the event code.
+            pass
         elif mod == "L":
-            modifier_dict["line_drive"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "L"
         elif mod == "LDP":
-            modifier_dict["line_drive"] = 1
-            modifier_dict["double_play"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "L"
+            modifier_dict["DP_FL"] = 1
         elif mod == "LTP":
-            modifier_dict["line_drive"] = 1
-            modifier_dict["triple_play"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "L"
+            modifier_dict["TP_FL"] = 1
         elif mod == "P":
-            modifier_dict["pop_fly"] = 1
+            modifier_dict["BATTEDBALL_CD"] = "F"
         elif mod == "SF":
-            modifier_dict["sac_fly"] = 1
+            modifier_dict["SF_FL"] = 1
         elif mod == "SH":
-            modifier_dict["sac_bunt"] = 1
+            modifier_dict["BUNT_FL"] = 1
         elif mod == "TP":
-            modifier_dict["triple_play"] = 1
+            modifier_dict["TP_FL"] = 1
     return modifier_dict, errors
 
 
