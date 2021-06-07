@@ -44,7 +44,7 @@ tabular data from event files.
 |                    | 34    | Event type                                  | EVENT_CD                  |
 |                    | 35    | Batter event flag                           | BAT_EVENT_FL              |
 |                    | 36    | Official time at bat flag                   | AB_FL                     |
-|                    | 37    | Hit value                                   | H_CD                      |
+| :heavy_check_mark: | 37    | Hit value                                   | H_CD                      |
 |                    | 38    | Sacrifice hit flag                          | SH_FL                     |
 | :heavy_check_mark: | 39    | Sacrifice fly flag                          | SF_FL                     |
 |                    | 40    | Outs on play                                | EVENT_OUTS_CT             |
